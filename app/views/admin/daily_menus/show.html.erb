@@ -1,0 +1,56 @@
+<% content_for :title, "Menú #{l(@daily_menu.menu_date)}" %>
+
+<h1>Menú del <%= l(@daily_menu.menu_date, format: :long) %></h1>
+
+<div class="card">
+  <h2>Platillos en el menú</h2>
+  <% if @menu_items.any? %>
+    <table>
+      <thead>
+        <tr><th>Platillo</th><th>Stock</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% @menu_items.each do |mi| %>
+          <tr>
+            <td><%= mi.dish.name %></td>
+            <td>
+              <%= form_with url: admin_daily_menu_menu_item_path(@daily_menu, mi), method: :patch, class: "inline" do |f| %>
+                <%= f.number_field :"menu_item[stock]", value: mi.stock, min: 0, style: "width: 80px;" %>
+                <%= f.submit "Actualizar", class: "secondary" %>
+              <% end %>
+            </td>
+            <td>
+              <%= button_to "Quitar", admin_daily_menu_menu_item_path(@daily_menu, mi), method: :delete, class: "danger",
+                                                                                       form: { data: { turbo_confirm: "¿Quitar?" } } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="muted">Aún no hay platillos en este menú.</p>
+  <% end %>
+</div>
+
+<div class="card">
+  <h2>Agregar platillo</h2>
+  <% if @available_dishes.any? %>
+    <%= form_with url: admin_daily_menu_menu_items_path(@daily_menu) do |f| %>
+      <div class="field">
+        <label>Platillo</label>
+        <%= f.select :"menu_item[dish_id]", @available_dishes.map { |d| [ d.name, d.id ] } %>
+      </div>
+      <div class="field">
+        <label>Stock inicial</label>
+        <%= f.number_field :"menu_item[stock]", value: 50, min: 0 %>
+      </div>
+      <div class="actions">
+        <%= f.submit "Agregar al menú" %>
+      </div>
+    <% end %>
+  <% else %>
+    <p class="muted">No hay platillos disponibles para agregar.</p>
+  <% end %>
+</div>
+
+<p><%= link_to "Volver", admin_daily_menus_path %></p>

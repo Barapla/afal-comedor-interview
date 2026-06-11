@@ -1,0 +1,50 @@
+<% content_for :title, "Nuevo pedido" %>
+
+<h1>Pedido del día — <%= l(@daily_menu.menu_date, format: :long) %></h1>
+
+<% if @order.errors.any? %>
+  <div class="errors">
+    <strong>No se pudo crear el pedido:</strong>
+    <ul>
+      <% @order.errors.full_messages.each do |msg| %><li><%= msg %></li><% end %>
+    </ul>
+  </div>
+<% end %>
+
+<%= form_with model: @order, url: orders_path do |f| %>
+  <div class="card">
+    <h2>Tu comida</h2>
+    <p class="muted">Selecciona los platillos que vas a consumir hoy.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Platillo</th>
+          <th>Precio</th>
+          <th>Stock</th>
+        </tr>
+      </thead>
+      <tbody>
+        <%= f.fields_for :order_items do |item_fields| %>
+          <% mi = item_fields.object.menu_item %>
+          <tr>
+            <td>
+              <%= item_fields.hidden_field :menu_item_id %>
+              <%= item_fields.check_box :_destroy, { checked: false }, "1", "0" %>
+            </td>
+            <td><%= mi.dish.name %></td>
+            <td>$<%= "%.2f" % mi.dish.price %></td>
+            <td><%= mi.stock %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <p class="muted">Marca la casilla para *excluir* un platillo. Por defecto se incluyen todos.</p>
+  </div>
+
+  <div class="actions">
+    <%= f.submit "Confirmar pedido" %>
+    <%= link_to "Cancelar", orders_path, class: "button secondary" %>
+  </div>
+<% end %>

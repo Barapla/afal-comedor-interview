@@ -1,0 +1,36 @@
+# See https://git-scm.com/docs/gitattributes for more about git attribute files.
+
+# Mark the database schema as having been generated.
+db/schema.rb linguist-generated
+
+# Mark any vendored files as having been vendored.
+vendor/* linguist-vendored
+config/credentials/*.yml.enc diff=rails_credentials
+config/credentials.yml.enc diff=rails_credentials
+
+# Default: detectar texto automáticamente, normalizar a LF al commit.
+* text=auto eol=lf
+
+# Scripts y archivos del repo que SIEMPRE deben ser LF (Windows rompe sin esto).
+*.rb              text eol=lf
+*.erb             text eol=lf
+*.yml             text eol=lf
+*.yaml            text eol=lf
+*.rake            text eol=lf
+*.gemspec         text eol=lf
+Gemfile           text eol=lf
+Gemfile.lock      text eol=lf
+Rakefile          text eol=lf
+Dockerfile*       text eol=lf
+docker-compose*   text eol=lf
+bin/*             text eol=lf
+*.sh              text eol=lf
+
+# Binarios — nunca convertir.
+*.png             binary
+*.jpg             binary
+*.jpeg            binary
+*.gif             binary
+*.ico             binary
+*.svg             binary
+*.pdf             binary

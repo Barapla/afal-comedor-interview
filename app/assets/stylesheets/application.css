@@ -1,0 +1,82 @@
+/*
+ * Comedor AFAL — vanilla CSS. Sin frameworks por diseño.
+ * Lo importante es la lógica, no el estilo.
+ */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1f2937;
+  background: #f9fafb;
+  line-height: 1.5;
+}
+
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Topbar */
+.topbar { background: #1f2937; color: #fff; padding: 0.75rem 0; }
+.topbar__inner {
+  max-width: 1100px; margin: 0 auto; padding: 0 1rem;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+}
+.topbar__brand { color: #fff; font-weight: 700; font-size: 1.1rem; }
+.topbar__nav { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.topbar__user { color: #d1d5db; font-size: 0.9rem; }
+.topbar__link { color: #fff; }
+.topbar__logout {
+  background: transparent; border: 1px solid #4b5563; color: #fff;
+  padding: 0.25rem 0.75rem; cursor: pointer; border-radius: 4px;
+}
+
+/* Layout */
+.container { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+h1 { font-size: 1.6rem; margin-top: 0; }
+h2 { font-size: 1.25rem; }
+
+/* Flash */
+.flash { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid; }
+.flash--notice { background: #ecfdf5; border-color: #10b981; color: #065f46; }
+.flash--alert  { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+
+/* Card */
+.card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;
+  padding: 1rem 1.25rem; margin-bottom: 1rem;
+}
+
+/* Forms */
+form .field { margin-bottom: 0.75rem; }
+form label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
+form input[type=text], form input[type=email], form input[type=password],
+form input[type=number], form input[type=date], form select, form textarea {
+  width: 100%; max-width: 380px; padding: 0.4rem 0.5rem;
+  border: 1px solid #d1d5db; border-radius: 4px; font-size: 1rem;
+}
+form.inline { display: inline-block; }
+form .actions { margin-top: 1rem; }
+
+button, input[type=submit], .button {
+  background: #2563eb; color: #fff; border: 0;
+  padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 1rem;
+  display: inline-block; text-decoration: none;
+}
+button.secondary, .button.secondary, input[type=submit].secondary { background: #e5e7eb; color: #1f2937; }
+button.danger, .button.danger, input[type=submit].danger { background: #ef4444; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e5e7eb; }
+th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+th { background: #f3f4f6; font-weight: 600; font-size: 0.9rem; }
+
+.errors {
+  background: #fef2f2; border: 1px solid #fca5a5; padding: 0.75rem 1rem;
+  border-radius: 4px; margin-bottom: 1rem; color: #991b1b;
+}
+.errors ul { margin: 0.25rem 0 0; padding-left: 1.25rem; }
+
+.muted { color: #6b7280; font-size: 0.9rem; }
+.right { text-align: right; }

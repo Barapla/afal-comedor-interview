@@ -1,0 +1,28 @@
+<% content_for :title, "Cocina" %>
+
+<h1>Tablero de cocina</h1>
+
+<% if @daily_menu %>
+  <p class="muted">Menú del <%= l(@daily_menu.menu_date, format: :long) %></p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Platillo</th>
+        <th>Porciones a preparar</th>
+        <th>Stock restante</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @summary.each do |row| %>
+        <tr>
+          <td><%= row[:dish].name %></td>
+          <td><%= row[:ordered] %></td>
+          <td><%= row[:stock] %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p class="muted">No hay menú del día configurado.</p>
+<% end %>

@@ -1,0 +1,30 @@
+<% if dish.errors.any? %>
+  <div class="errors">
+    <ul><% dish.errors.full_messages.each do |m| %><li><%= m %></li><% end %></ul>
+  </div>
+<% end %>
+
+<%= form_with model: [ :admin, dish ] do |f| %>
+  <div class="field">
+    <%= f.label :name, "Nombre" %>
+    <%= f.text_field :name, required: true %>
+  </div>
+  <div class="field">
+    <%= f.label :description, "Descripción" %>
+    <%= f.text_area :description, rows: 3 %>
+  </div>
+  <div class="field">
+    <%= f.label :price_cents, "Precio (en centavos)" %>
+    <%= f.number_field :price_cents, required: true, min: 1 %>
+  </div>
+  <div class="field">
+    <label>
+      <%= f.check_box :active %>
+      Activo
+    </label>
+  </div>
+  <div class="actions">
+    <%= f.submit %>
+    <%= link_to "Cancelar", admin_dishes_path, class: "button secondary" %>
+  </div>
+<% end %>

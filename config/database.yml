@@ -1,0 +1,30 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  host: <%= ENV.fetch("DATABASE_HOST", "localhost") %>
+  port: <%= ENV.fetch("DATABASE_PORT", 5432) %>
+  username: <%= ENV.fetch("DATABASE_USERNAME", "postgres") %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD", "postgres") %>
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
+  database: afal_comedor_development
+
+test:
+  <<: *default
+  database: afal_comedor_test
+
+production:
+  primary: &primary_production
+    <<: *default
+    database: afal_comedor_production
+    url: <%= ENV["DATABASE_URL"] %>
+  cache:
+    <<: *primary_production
+    database: afal_comedor_production_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_production
+    database: afal_comedor_production_queue
+    migrations_paths: db/queue_migrate

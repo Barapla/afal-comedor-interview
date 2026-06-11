@@ -1,0 +1,18 @@
+<% content_for :title, "Nuevo menú" %>
+
+<h1>Nuevo menú del día</h1>
+
+<%= form_with model: [ :admin, @daily_menu ] do |f| %>
+  <% if @daily_menu.errors.any? %>
+    <div class="errors">
+      <ul><% @daily_menu.errors.full_messages.each do |m| %><li><%= m %></li><% end %></ul>
+    </div>
+  <% end %>
+  <div class="field">
+    <%= f.label :menu_date, "Fecha" %>
+    <%= f.date_field :menu_date, required: true %>
+  </div>
+  <div class="actions">
+    <%= f.submit "Crear" %>
+  </div>
+<% end %>

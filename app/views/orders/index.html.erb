@@ -1,0 +1,38 @@
+<% content_for :title, "Mis pedidos" %>
+
+<h1>Mis pedidos</h1>
+
+<p>
+  <% if DailyMenu.today %>
+    <%= link_to "Hacer pedido del día", new_order_path, class: "button" %>
+  <% else %>
+    <span class="muted">No hay menú del día disponible.</span>
+  <% end %>
+</p>
+
+<% if @orders.any? %>
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Estado</th>
+        <th>Platillos</th>
+        <th class="right">Total a descontar</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @orders.each do |order| %>
+        <tr>
+          <td><%= l(order.daily_menu.menu_date, format: :long) %></td>
+          <td><%= order.status %></td>
+          <td><%= order.order_items.map { |i| i.menu_item.dish.name }.to_sentence %></td>
+          <td class="right">$<%= "%.2f" % (order.amount_due_cents / 100.0) %> MXN</td>
+          <td><%= link_to "Ver", order %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p class="muted">Aún no tienes pedidos.</p>
+<% end %>

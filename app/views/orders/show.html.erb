@@ -1,0 +1,37 @@
+<% content_for :title, "Pedido ##{@order.id}" %>
+
+<h1>Pedido del <%= l(@order.daily_menu.menu_date, format: :long) %></h1>
+
+<div class="card">
+  <p><strong>Estado:</strong> <%= @order.status %></p>
+
+  <table>
+    <thead>
+      <tr><th>Platillo</th><th class="right">Precio</th></tr>
+    </thead>
+    <tbody>
+      <% @order.order_items.each do |item| %>
+        <tr>
+          <td><%= item.menu_item.dish.name %></td>
+          <td class="right">$<%= "%.2f" % (item.price_cents / 100.0) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+    <tfoot>
+      <tr>
+        <th>Subtotal</th>
+        <th class="right">$<%= "%.2f" % (@order.items_total_cents / 100.0) %></th>
+      </tr>
+      <tr>
+        <th>Subsidio aplicado</th>
+        <th class="right">-$<%= "%.2f" % (@order.subsidy_applied_cents / 100.0) %></th>
+      </tr>
+      <tr>
+        <th>Total a descontar de nómina</th>
+        <th class="right">$<%= "%.2f" % (@order.amount_due_cents / 100.0) %> MXN</th>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<%= link_to "Volver", orders_path %>

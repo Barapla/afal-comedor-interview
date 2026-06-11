@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <title><%= content_for(:title) || "Comedor AFAL" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag :app %>
+  </head>
+
+  <body>
+    <header class="topbar">
+      <div class="topbar__inner">
+        <a class="topbar__brand" href="<%= root_path %>">Comedor AFAL</a>
+        <nav class="topbar__nav">
+          <% if authenticated? %>
+            <span class="topbar__user"><%= Current.user.name %> (<%= Current.user.role %>)</span>
+            <%= link_to "Mis pedidos", orders_path, class: "topbar__link" %>
+            <% if Current.user.admin? %>
+              <%= link_to "Platillos", admin_dishes_path, class: "topbar__link" %>
+              <%= link_to "Menús", admin_daily_menus_path, class: "topbar__link" %>
+            <% end %>
+            <% if Current.user.chef? || Current.user.admin? %>
+              <%= link_to "Cocina", chef_dashboard_path, class: "topbar__link" %>
+            <% end %>
+            <%= button_to "Salir", session_path, method: :delete, class: "topbar__logout" %>
+          <% end %>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <% flash.each do |type, message| %>
+        <div class="flash flash--<%= type %>"><%= message %></div>
+      <% end %>
+
+      <%= yield %>
+    </main>
+  </body>
+</html>

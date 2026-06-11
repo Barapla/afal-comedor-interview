@@ -1,0 +1,21 @@
+<% content_for :title, "Menús del día" %>
+
+<h1>Menús del día</h1>
+
+<p><%= link_to "Nuevo menú", new_admin_daily_menu_path, class: "button" %></p>
+
+<table>
+  <thead>
+    <tr><th>Fecha</th><th>Platillos</th><th>Pedidos</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @daily_menus.each do |dm| %>
+      <tr>
+        <td><%= l(dm.menu_date, format: :long) %></td>
+        <td><%= dm.menu_items.count %></td>
+        <td><%= dm.orders.count %></td>
+        <td><%= link_to "Ver", admin_daily_menu_path(dm) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

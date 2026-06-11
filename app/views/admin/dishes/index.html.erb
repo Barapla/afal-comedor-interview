@@ -1,0 +1,26 @@
+<% content_for :title, "Platillos" %>
+
+<h1>Platillos</h1>
+
+<p><%= link_to "Nuevo platillo", new_admin_dish_path, class: "button" %></p>
+
+<table>
+  <thead>
+    <tr><th>Nombre</th><th>Precio</th><th>Activo</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @dishes.each do |dish| %>
+      <tr>
+        <td><%= dish.name %></td>
+        <td>$<%= "%.2f" % dish.price %></td>
+        <td><%= dish.active? ? "Sí" : "No" %></td>
+        <td>
+          <%= link_to "Editar", edit_admin_dish_path(dish) %>
+          &nbsp;
+          <%= button_to "Eliminar", admin_dish_path(dish), method: :delete, class: "danger",
+                                                            form: { data: { turbo_confirm: "¿Eliminar?" } } %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

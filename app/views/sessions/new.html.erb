@@ -1,0 +1,28 @@
+<% content_for :title, "Iniciar sesión" %>
+
+<h1>Iniciar sesión</h1>
+
+<div class="card">
+  <%= form_with url: session_path do |f| %>
+    <div class="field">
+      <%= f.label :email_address, "Correo" %>
+      <%= f.email_field :email_address, autofocus: true, required: true, autocomplete: "username" %>
+    </div>
+
+    <div class="field">
+      <%= f.label :password, "Contraseña" %>
+      <%= f.password_field :password, required: true, autocomplete: "current-password", maxlength: 72 %>
+    </div>
+
+    <div class="actions">
+      <%= f.submit "Entrar" %>
+    </div>
+  <% end %>
+
+  <p class="muted">
+    Credenciales de prueba (ver <code>db/seeds.rb</code>):<br>
+    Empleado: <code>empleado@afal.test</code> / <code>password</code><br>
+    Admin: <code>admin@afal.test</code> / <code>password</code><br>
+    Chef: <code>chef@afal.test</code> / <code>password</code>
+  </p>
+</div>
