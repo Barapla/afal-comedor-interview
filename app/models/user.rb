@@ -9,14 +9,9 @@ class User < ApplicationRecord
 
   validates :name, presence: true
   validates :role, inclusion: { in: ROLES }
-  # DEUDA TÉCNICA: No hay validación de presencia ni formato de email_address a nivel de modelo.
-  # La restricción NOT NULL existe en BD pero un string vacío "" pasaría la validación.
-  # POSIBLE FIX: validates :email_address, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
-  #
-  # DEUDA TÉCNICA: No hay validación de unicidad de email_address en el modelo.
-  # La restricción unique index en BD evita duplicados, pero si se viola, Rails lanza
-  # ActiveRecord::RecordNotUnique en lugar de un error de validación amigable.
-  # POSIBLE FIX: validates :email_address, uniqueness: { case_sensitive: false }
+  validates :email_address, presence: true,
+                            format: { with: URI::MailTo::EMAIL_REGEXP },
+                            uniqueness: { case_sensitive: false }
 
   def admin?    = role == "admin"
   def chef?     = role == "chef"

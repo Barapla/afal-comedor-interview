@@ -54,4 +54,32 @@ class OrderBusinessTest < ActiveSupport::TestCase
     assert_includes duplicate.errors[:user_id], "ya está en uso"
   end
 
+  test "subsidy_cents no puede ser negativo" do
+    order = @menu.orders.new(user: @user, subsidy_cents: -1)
+    order.status = "pending"
+    assert_not order.valid?
+    assert order.errors[:subsidy_cents].any?
+  end
+
+  test "items_total_cents usa items cargados en memoria sin disparar consulta extra" do
+    order = @menu.orders.create!(
+      user: @user,
+      order_items_attributes: [ { menu_item_id: @item_a.id, price_cents: 6_000 } ]
+    )
+    order_with_items = Order.includes(:order_items).find(order.id)
+
+    assert order_with_items.order_items.loaded?
+    assert_equal 6_000, order_with_items.items_total_cents
+  end
+
+  test "items_total_cents se memoiza al llamarse múltiples veces" do
+    order = @menu.orders.create!(
+      user: @user,
+      order_items_attributes: [ { menu_item_id: @item_a.id, price_cents: 6_000 } ]
+    )
+    total1 = order.items_total_cents
+    total2 = order.items_total_cents
+    assert_equal total1, total2
+    assert_equal order.instance_variable_get(:@items_total_cents), 6_000
+  end
 end
