@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_210143) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_18_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -66,10 +66,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_210143) do
     t.datetime "created_at", null: false
     t.bigint "daily_menu_id", null: false
     t.string "status", default: "pending", null: false
-    t.integer "subsidy_cents", null: false
+    t.integer "subsidy_cents", default: 10000, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["daily_menu_id"], name: "index_orders_on_daily_menu_id"
+    t.index ["user_id", "daily_menu_id"], name: "index_orders_on_user_id_and_daily_menu_id", unique: true
     t.index ["user_id"], name: "index_orders_on_user_id"
   end
 

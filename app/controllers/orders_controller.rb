@@ -5,7 +5,8 @@ class OrdersController < ApplicationController
   before_action :set_daily_menu, only: %i[new create]
   before_action :check_no_duplicate_order, only: [:create]
 
-  InsufficientStockError = Class.new(StandardError)
+  OrderError = Class.new(StandardError)
+  InsufficientStockError = Class.new(OrderError)
 
   def index
     @orders = Current.user.orders.includes(:daily_menu, order_items: { menu_item: :dish }).order(created_at: :desc)
@@ -16,12 +17,10 @@ class OrdersController < ApplicationController
   end
 
   def create
-    menu_item_ids = Array(params[:menu_item_ids]).reject(&:blank?)
-    return error_redirect('Debes seleccionar al menos un platillo') if menu_item_ids.empty?
-
-    build_and_save_order!(menu_item_ids, parse_guest_params)
+    menu_item_ids, guests_attrs = validated_order_params
+    build_and_save_order!(menu_item_ids, guests_attrs)
     redirect_to @order, notice: 'Pedido confirmado'
-  rescue InsufficientStockError => e
+  rescue OrderError => e
     error_redirect(e.message)
   rescue ActiveRecord::RecordInvalid => e
     error_redirect("Error al crear el pedido: #{e.message}")
@@ -35,9 +34,17 @@ class OrdersController < ApplicationController
 
   private
 
-  def build_and_save_order!(menu_item_ids, guests_attrs = [])
-    raise InsufficientStockError, 'El nombre del invitado es requerido' if guests_attrs.any? { |g| g[:name].blank? }
+  def validated_order_params
+    menu_item_ids = Array(params[:menu_item_ids]).reject(&:blank?)
+    raise OrderError, 'Debes seleccionar al menos un platillo' if menu_item_ids.empty?
 
+    guests_attrs = parse_guest_params
+    raise OrderError, 'El nombre del invitado es requerido' if guests_attrs.any? { |g| g[:name].blank? }
+
+    [menu_item_ids, guests_attrs]
+  end
+
+  def build_and_save_order!(menu_item_ids, guests_attrs = [])
     ActiveRecord::Base.transaction do
       menu_items = fetch_and_validate_menu_items!(menu_item_ids)
       total_comensales = 1 + guests_attrs.size
@@ -80,8 +87,9 @@ class OrdersController < ApplicationController
   end
 
   def parse_guest_params
-    permitted = params.permit(guests: %i[name note])
-    Array(permitted[:guests]).reject { |g| g[:name].blank? && g[:note].blank? }
+    return [] unless params[:guests].present?
+
+    params[:guests].map { |g| g.permit(:name, :note) }.reject { |g| g[:name].blank? && g[:note].blank? }
   end
 
   def menu_item_display_name(menu_item)
