@@ -2,16 +2,7 @@
 
 <h1>Pedido del día — <%= l(@daily_menu.menu_date, format: :long) %></h1>
 
-<% if @order.errors.any? %>
-  <div class="errors">
-    <strong>No se pudo crear el pedido:</strong>
-    <ul>
-      <% @order.errors.full_messages.each do |msg| %><li><%= msg %></li><% end %>
-    </ul>
-  </div>
-<% end %>
-
-<%= form_with model: @order, url: orders_path do |f| %>
+<%= form_with url: orders_path do |f| %>
   <div class="card">
     <h2>Tu comida</h2>
     <p class="muted">Selecciona los platillos que vas a consumir hoy.</p>
@@ -26,21 +17,19 @@
         </tr>
       </thead>
       <tbody>
-        <%= f.fields_for :order_items do |item_fields| %>
-          <% mi = item_fields.object.menu_item %>
+        <% @menu_items.each do |menu_item| %>
           <tr>
             <td>
-              <%= item_fields.hidden_field :menu_item_id %>
-              <%= item_fields.check_box :_destroy, { checked: false }, "1", "0" %>
+              <%= check_box_tag "menu_item_ids[]", menu_item.id, false, id: "menu_item_#{menu_item.id}" %>
             </td>
-            <td><%= mi.dish.name %></td>
-            <td>$<%= "%.2f" % mi.dish.price %></td>
-            <td><%= mi.stock %></td>
+            <td><%= label_tag "menu_item_#{menu_item.id}", menu_item.dish.name %></td>
+            <td>$<%= "%.2f" % menu_item.dish.price %></td>
+            <td><%= menu_item.stock %></td>
           </tr>
         <% end %>
       </tbody>
     </table>
-    <p class="muted">Marca la casilla para *excluir* un platillo. Por defecto se incluyen todos.</p>
+    <p class="muted">Marca los platillos que deseas incluir en tu pedido.</p>
   </div>
 
   <div class="actions">

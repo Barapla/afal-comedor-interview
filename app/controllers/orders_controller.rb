@@ -5,28 +5,27 @@ class OrdersController < ApplicationController
   before_action :set_daily_menu, only: %i[new create]
 
   InsufficientStockError = Class.new(StandardError)
-  DataIntegrityError = Class.new(StandardError)
 
   def index
     @orders = Current.user.orders.includes(:daily_menu, order_items: { menu_item: :dish }).order(created_at: :desc)
   end
 
   def new
-    @order = @daily_menu.orders.new(user: Current.user)
-    @daily_menu.menu_items.includes(:dish).each { |mi| @order.order_items.build(menu_item: mi) }
+    @menu_items = @daily_menu.menu_items.includes(:dish)
   end
 
   def create
-    build_order
-    return render_order_error('Ya tienes un pedido para el menú de hoy') if duplicate_order?
+    menu_item_ids = Array(params[:menu_item_ids]).reject(&:blank?)
+    return error_redirect('Debes seleccionar al menos un platillo') if menu_item_ids.empty?
 
-    process_order!
+    build_and_save_order!(menu_item_ids)
     redirect_to @order, notice: 'Pedido confirmado'
-  rescue InsufficientStockError, DataIntegrityError, ActiveRecord::RecordInvalid => e
-    render_order_error(e.message)
+  rescue InsufficientStockError => e
+    error_redirect(e.message)
+  rescue ActiveRecord::RecordInvalid => e
+    error_redirect("Error al crear el pedido: #{e.message}")
   rescue ActiveRecord::RecordNotUnique
-    build_order
-    render_order_error('Ya tienes un pedido para el menú de hoy')
+    error_redirect('Ya tienes un pedido para el menú de hoy')
   end
 
   def show
@@ -35,50 +34,33 @@ class OrdersController < ApplicationController
 
   private
 
-  def process_order!
+  def build_and_save_order!(menu_item_ids)
     ActiveRecord::Base.transaction do
-      menu_items = MenuItem.includes(:dish).lock.where(id: @order.order_items.map(&:menu_item_id)).index_by(&:id)
-      @order.order_items.each { |item| process_item!(item, menu_items) }
-      @order.save!
+      menu_items = MenuItem.includes(:dish).lock.where(id: menu_item_ids)
+      validate_stock!(menu_items)
+      @order = @daily_menu.orders.create!(user: Current.user)
+      menu_items.each do |menu_item|
+        @order.order_items.create!(menu_item: menu_item, price_cents: menu_item.price_cents)
+        menu_item.decrement!(:stock)
+      end
     end
   end
 
-  def process_item!(item, menu_items)
-    mi = menu_items[item.menu_item_id]
-    raise DataIntegrityError, log_missing_menu_item(item) unless mi
-    raise DataIntegrityError, 'El platillo fue eliminado y no está disponible' unless mi.dish
+  def validate_stock!(menu_items)
+    out_of_stock = menu_items.select { |mi| mi.stock <= 0 }
+    return unless out_of_stock.any?
 
-    raise InsufficientStockError, "Sin stock disponible para #{mi.dish.name}" if mi.stock <= 0
-
-    mi.decrement!(:stock)
-    item.price_cents = mi.price_cents
+    names = out_of_stock.map { |mi| mi.dish&.name || 'Platillo eliminado' }.join(', ')
+    raise InsufficientStockError, "Los siguientes platillos no tienen stock disponible: #{names}"
   end
 
-  def build_order
-    @order = @daily_menu.orders.new(order_params)
-    @order.user = Current.user
-  end
-
-  def duplicate_order?
-    Current.user.orders.exists?(daily_menu: @daily_menu)
-  end
-
-  def render_order_error(message)
-    @order.errors.add(:base, message)
-    render :new, status: :unprocessable_entity
-  end
-
-  def log_missing_menu_item(item)
-    Rails.logger.warn "DataIntegrity: menu_item_id=#{item.menu_item_id} no existe en BD para user=#{Current.user.id}"
-    'Artículo de menú no encontrado'
+  def error_redirect(message)
+    flash[:error] = message
+    redirect_to new_order_path
   end
 
   def set_daily_menu
     @daily_menu = DailyMenu.today
     redirect_to root_path, alert: 'No hay menú disponible hoy.' if @daily_menu.nil?
-  end
-
-  def order_params
-    params.expect(order: [{ order_items_attributes: [%i[menu_item_id _destroy]] }])
   end
 end
