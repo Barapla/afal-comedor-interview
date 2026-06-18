@@ -19,7 +19,7 @@
     </tbody>
     <tfoot>
       <tr>
-        <th>Subtotal</th>
+        <th>Subtotal (tu comida)</th>
         <th class="right">$<%= "%.2f" % (@order.items_total_cents / 100.0) %></th>
       </tr>
       <tr>
@@ -27,11 +27,35 @@
         <th class="right">-$<%= "%.2f" % (@order.subsidy_applied_cents / 100.0) %></th>
       </tr>
       <tr>
+        <th>Tu costo neto</th>
+        <th class="right">$<%= "%.2f" % (@order.amount_due_cents / 100.0) %></th>
+      </tr>
+      <% if @order.guests.any? %>
+        <tr>
+          <th>Costo invitados (<%= @order.guests.size %>)</th>
+          <th class="right">$<%= "%.2f" % (@order.guests_total_cents / 100.0) %></th>
+        </tr>
+      <% end %>
+      <tr>
         <th>Total a descontar de nómina</th>
-        <th class="right">$<%= "%.2f" % (@order.amount_due_cents / 100.0) %> MXN</th>
+        <th class="right">$<%= "%.2f" % (@order.total_payroll_deduction_cents / 100.0) %> MXN</th>
       </tr>
     </tfoot>
   </table>
+
+  <% if @order.guests.any? %>
+    <h3 style="margin-top:1.5rem">Invitados</h3>
+    <ul>
+      <% @order.guests.each do |guest| %>
+        <li>
+          <%= guest.name %>
+          <% if guest.note.present? %>
+            — <span class="muted"><%= guest.note %></span>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
 </div>
 
 <%= link_to "Volver", orders_path %>

@@ -32,8 +32,48 @@
     <p class="muted">Marca los platillos que deseas incluir en tu pedido.</p>
   </div>
 
+  <div class="card">
+    <h2>Invitados (opcional)</h2>
+    <p class="muted">Agrega los comensales externos que te acompañarán. Los platillos seleccionados arriba se aplican a todos. El subsidio solo aplica a tu consumo.</p>
+
+    <div id="guests-container"></div>
+
+    <button type="button" id="add-guest-btn" class="button secondary">+ Agregar invitado</button>
+
+    <template id="guest-template">
+      <div class="guest-entry" style="margin-top:1rem; padding:1rem; border:1px solid #ddd; border-radius:4px;">
+        <div>
+          <label>Nombre del invitado <span style="color:red">*</span></label>
+          <input type="text" name="guests[][name]" placeholder="Nombre completo" style="width:100%" />
+        </div>
+        <div style="margin-top:0.5rem">
+          <label>Nota (opcional)</label>
+          <textarea name="guests[][note]" placeholder="Ej: alérgico a nueces" rows="2" style="width:100%"></textarea>
+        </div>
+        <button type="button" class="remove-guest button secondary" style="margin-top:0.5rem">Quitar invitado</button>
+      </div>
+    </template>
+  </div>
+
   <div class="actions">
     <%= f.submit "Confirmar pedido" %>
     <%= link_to "Cancelar", orders_path, class: "button secondary" %>
   </div>
 <% end %>
+
+<script>
+  (function () {
+    var btn = document.getElementById('add-guest-btn');
+    var container = document.getElementById('guests-container');
+    var template = document.getElementById('guest-template');
+
+    btn.addEventListener('click', function () {
+      var entry = template.content.cloneNode(true);
+      var removeBtn = entry.querySelector('.remove-guest');
+      removeBtn.addEventListener('click', function () {
+        this.closest('.guest-entry').remove();
+      });
+      container.appendChild(entry);
+    });
+  })();
+</script>

@@ -19,7 +19,7 @@ class OrdersController < ApplicationController
     menu_item_ids = Array(params[:menu_item_ids]).reject(&:blank?)
     return error_redirect('Debes seleccionar al menos un platillo') if menu_item_ids.empty?
 
-    build_and_save_order!(menu_item_ids)
+    build_and_save_order!(menu_item_ids, parse_guest_params)
     redirect_to @order, notice: 'Pedido confirmado'
   rescue InsufficientStockError => e
     error_redirect(e.message)
@@ -30,42 +30,58 @@ class OrdersController < ApplicationController
   end
 
   def show
-    @order = Current.user.orders.includes(order_items: { menu_item: :dish }).find(params[:id])
+    @order = Current.user.orders.includes(:guests, order_items: { menu_item: :dish }).find(params[:id])
   end
 
   private
 
-  def build_and_save_order!(menu_item_ids)
+  def build_and_save_order!(menu_item_ids, guests_attrs = [])
+    raise InsufficientStockError, 'El nombre del invitado es requerido' if guests_attrs.any? { |g| g[:name].blank? }
+
     ActiveRecord::Base.transaction do
-      menu_items = @daily_menu.menu_items.where(id: menu_item_ids).lock.includes(:dish).to_a
-      raise InsufficientStockError, 'Ninguno de los platillos seleccionados está disponible' if menu_items.empty?
-
-      if menu_items.size != menu_item_ids.uniq.size
-        raise InsufficientStockError, 'Algunos platillos seleccionados no pertenecen al menú de hoy o están duplicados'
-      end
-
-      validate_stock!(menu_items)
-      menu_items.each { |mi| mi.decrement!(:stock) }
-      create_order_with_items!(menu_items)
+      menu_items = fetch_and_validate_menu_items!(menu_item_ids)
+      total_comensales = 1 + guests_attrs.size
+      validate_stock!(menu_items, total_comensales)
+      menu_items.each { |mi| mi.decrement!(:stock, total_comensales) }
+      create_order_with_items!(menu_items, guests_attrs)
     end
   end
 
-  def create_order_with_items!(menu_items)
+  def fetch_and_validate_menu_items!(menu_item_ids)
+    menu_items = @daily_menu.menu_items.where(id: menu_item_ids).lock.includes(:dish).to_a
+    raise InsufficientStockError, 'Ninguno de los platillos seleccionados está disponible' if menu_items.empty?
+
+    if menu_items.size != menu_item_ids.uniq.size
+      raise InsufficientStockError, 'Algunos platillos seleccionados no pertenecen al menú de hoy o están duplicados'
+    end
+
+    menu_items
+  end
+
+  def create_order_with_items!(menu_items, guests_attrs = [])
     @order = @daily_menu.orders.create!(user: Current.user)
     menu_items.each do |menu_item|
       @order.order_items.create!(menu_item: menu_item, price_cents: menu_item.price_cents)
     end
+    guests_attrs.each do |guest_attr|
+      @order.guests.create!(name: guest_attr[:name], note: guest_attr[:note])
+    end
   end
 
-  def validate_stock!(menu_items)
+  def validate_stock!(menu_items, total_comensales = 1)
     without_dish = menu_items.select { |mi| mi.dish.nil? }
     raise InsufficientStockError, 'Algunos platillos ya no están disponibles' if without_dish.any?
 
-    out_of_stock = menu_items.select { |mi| mi.stock <= 0 }
-    return unless out_of_stock.any?
+    insufficient = menu_items.select { |mi| mi.stock < total_comensales }
+    return unless insufficient.any?
 
-    names = out_of_stock.map { |mi| menu_item_display_name(mi) }.join(', ')
+    names = insufficient.map { |mi| menu_item_display_name(mi) }.join(', ')
     raise InsufficientStockError, "Los siguientes platillos no tienen stock disponible: #{names}"
+  end
+
+  def parse_guest_params
+    permitted = params.permit(guests: %i[name note])
+    Array(permitted[:guests]).reject { |g| g[:name].blank? && g[:note].blank? }
   end
 
   def menu_item_display_name(menu_item)

@@ -131,6 +131,89 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
     assert_equal 1, Order.count, 'solo una orden debe haberse creado'
   end
 
+  # CA1: pedido con 2 invitados válidos crea 2 registros Guest asociados
+  test 'create con invitados válidos crea pedido con registros de invitados' do
+    assert_difference 'Order.count', 1 do
+      assert_difference 'Guest.count', 2 do
+        post orders_path, params: {
+          menu_item_ids: [@mi.id],
+          guests: [{ name: 'Visitante Uno', note: '' }, { name: 'Visitante Dos', note: 'VIP' }]
+        }
+      end
+    end
+
+    order = Order.last
+    assert_equal 2, order.guests.count
+  end
+
+  # CA3: stock 3, empleado + 3 invitados = 4 → rechazado
+  test 'create falla si stock es insuficiente para empleado mas invitados' do
+    @mi.update!(stock: 3)
+
+    assert_no_difference 'Order.count' do
+      post orders_path, params: {
+        menu_item_ids: [@mi.id],
+        guests: [{ name: 'Inv 1' }, { name: 'Inv 2' }, { name: 'Inv 3' }]
+      }
+    end
+
+    assert_redirected_to new_order_path
+    assert_match 'no tienen stock disponible', flash[:error]
+    assert_equal 3, @mi.reload.stock
+  end
+
+  # CA4: stock 5, empleado + 2 invitados = 3 → stock queda en 2
+  test 'create descuenta stock para empleado mas invitados' do
+    @mi.update!(stock: 5)
+
+    assert_difference 'Order.count', 1 do
+      post orders_path, params: {
+        menu_item_ids: [@mi.id],
+        guests: [{ name: 'Inv 1' }, { name: 'Inv 2' }]
+      }
+    end
+
+    assert_equal 2, @mi.reload.stock
+  end
+
+  # CA5: sin invitados el flujo es idéntico al anterior
+  test 'create sin invitados funciona igual que antes (compatibilidad)' do
+    assert_difference 'Order.count', 1 do
+      post orders_path, params: { menu_item_ids: [@mi.id] }
+    end
+
+    order = Order.last
+    assert_equal 0, order.guests.count
+    assert_equal 4, @mi.reload.stock
+  end
+
+  # CA7: invitado sin nombre → falla con mensaje específico
+  test 'create con invitado sin nombre falla validación' do
+    assert_no_difference 'Order.count' do
+      post orders_path, params: {
+        menu_item_ids: [@mi.id],
+        guests: [{ name: '', note: 'tiene nota pero no nombre' }]
+      }
+    end
+
+    assert_redirected_to new_order_path
+    assert_equal 'El nombre del invitado es requerido', flash[:error]
+  end
+
+  # CA8: detalle del pedido muestra invitados
+  test 'show muestra los invitados del pedido' do
+    order = @menu.orders.create!(
+      user: @user,
+      order_items_attributes: [{ menu_item_id: @mi.id, price_cents: @dish.price_cents }]
+    )
+    order.guests.create!(name: 'Rodrigo Lopez')
+
+    get order_path(order)
+
+    assert_response :success
+    assert_match 'Rodrigo Lopez', response.body
+  end
+
   private
 
   def place_locked_order!(user)

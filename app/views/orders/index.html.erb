@@ -27,7 +27,7 @@
           <td><%= l(order.daily_menu.menu_date, format: :long) %></td>
           <td><%= order.status %></td>
           <td><%= order.order_items.map { |i| i.menu_item.dish.name }.to_sentence %></td>
-          <td class="right">$<%= "%.2f" % (order.amount_due_cents / 100.0) %> MXN</td>
+          <td class="right">$<%= "%.2f" % (order.total_payroll_deduction_cents / 100.0) %> MXN</td>
           <td><%= link_to "Ver", order %></td>
         </tr>
       <% end %>
