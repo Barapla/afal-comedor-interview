@@ -5,6 +5,7 @@ class OrdersController < ApplicationController
   before_action :set_daily_menu, only: %i[new create]
 
   InsufficientStockError = Class.new(StandardError)
+  DataIntegrityError = Class.new(StandardError)
 
   def index
     @orders = Current.user.orders.includes(:daily_menu, order_items: { menu_item: :dish }).order(created_at: :desc)
@@ -20,11 +21,11 @@ class OrdersController < ApplicationController
     @order.user = Current.user
     process_order!
     redirect_to @order, notice: 'Pedido confirmado'
-  rescue InsufficientStockError => e
+  rescue InsufficientStockError, DataIntegrityError, ActiveRecord::RecordInvalid => e
     @order.errors.add(:base, e.message)
     render :new, status: :unprocessable_entity
-  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-    @order.errors.add(:base, 'Ya tienes un pedido para el menú de hoy') if e.is_a?(ActiveRecord::RecordNotUnique)
+  rescue ActiveRecord::RecordNotUnique
+    @order.errors.add(:base, 'Ya tienes un pedido para el menú de hoy')
     render :new, status: :unprocessable_entity
   end
 
@@ -44,12 +45,10 @@ class OrdersController < ApplicationController
 
   def process_item!(item, menu_items)
     mi = menu_items[item.menu_item_id]
-    raise InsufficientStockError, 'Artículo de menú no encontrado' unless mi
+    raise DataIntegrityError, 'Artículo de menú no encontrado' unless mi
+    raise DataIntegrityError, 'El platillo fue eliminado y no está disponible' unless mi.dish
 
-    if mi.stock <= 0
-      raise InsufficientStockError,
-            "Sin stock disponible para #{mi.dish&.name || 'platillo eliminado'}"
-    end
+    raise InsufficientStockError, "Sin stock disponible para #{mi.dish.name}" if mi.stock <= 0
 
     mi.decrement!(:stock)
     item.price_cents = mi.price_cents
