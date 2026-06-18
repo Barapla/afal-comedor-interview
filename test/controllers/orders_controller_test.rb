@@ -2,7 +2,7 @@
 
 require 'test_helper'
 
-class OrdersControllerTest < ActionDispatch::IntegrationTest
+class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable Metrics/ClassLength
   setup do
     @user = User.create!(
       email_address: 'orders-ctrl@test.com',
@@ -91,6 +91,15 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal stock_before, @mi.reload.stock
     assert_equal 0, mi_b.reload.stock
+  end
+
+  # CA7: menu_item_ids de otro menú deben ser ignorados
+  test 'create ignora menu_item_ids que no pertenecen al menu de hoy' do
+    otro_menu = DailyMenu.create!(menu_date: Date.current - 1.day)
+    mi_otro = MenuItem.create!(daily_menu: otro_menu, dish: @dish, stock: 5)
+    assert_no_difference('Order.count') { post orders_path, params: { menu_item_ids: [mi_otro.id] } }
+    assert_redirected_to new_order_path
+    assert_match 'Ninguno de los platillos', flash[:error]
   end
 
   test 'create no decrementa stock si la orden falla por duplicado' do
