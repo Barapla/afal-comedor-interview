@@ -3,6 +3,7 @@
 # Gestiona la creación, listado y visualización de pedidos de empleados.
 class OrdersController < ApplicationController
   before_action :set_daily_menu, only: %i[new create]
+  before_action :check_no_duplicate_order, only: [:create]
 
   InsufficientStockError = Class.new(StandardError)
 
@@ -40,10 +41,11 @@ class OrdersController < ApplicationController
       raise InsufficientStockError, 'Ninguno de los platillos seleccionados está disponible' if menu_items.empty?
 
       if menu_items.size != menu_item_ids.uniq.size
-        raise InsufficientStockError, 'Algunos platillos seleccionados no pertenecen al menú de hoy'
+        raise InsufficientStockError, 'Algunos platillos seleccionados no pertenecen al menú de hoy o están duplicados'
       end
 
       validate_stock!(menu_items)
+      menu_items.each { |mi| mi.decrement!(:stock) }
       create_order_with_items!(menu_items)
     end
   end
@@ -53,7 +55,6 @@ class OrdersController < ApplicationController
     menu_items.each do |menu_item|
       @order.order_items.create!(menu_item: menu_item, price_cents: menu_item.price_cents)
     end
-    menu_items.each { |menu_item| menu_item.decrement!(:stock) } # rubocop:disable Style/CombinableLoops
   end
 
   def validate_stock!(menu_items)
@@ -63,8 +64,16 @@ class OrdersController < ApplicationController
     out_of_stock = menu_items.select { |mi| mi.stock <= 0 }
     return unless out_of_stock.any?
 
-    names = out_of_stock.map { |mi| mi.dish.name }.join(', ')
+    names = out_of_stock.map { |mi| menu_item_display_name(mi) }.join(', ')
     raise InsufficientStockError, "Los siguientes platillos no tienen stock disponible: #{names}"
+  end
+
+  def menu_item_display_name(menu_item)
+    menu_item.dish&.name || "platillo ##{menu_item.id}"
+  end
+
+  def check_no_duplicate_order
+    error_redirect('Ya tienes un pedido para el menú de hoy') if @daily_menu.orders.exists?(user: Current.user)
   end
 
   def error_redirect(message)
