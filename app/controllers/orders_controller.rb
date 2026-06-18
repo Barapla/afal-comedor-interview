@@ -35,15 +35,18 @@ class OrdersController < ApplicationController
     def process_order!
       ActiveRecord::Base.transaction do
         menu_items = MenuItem.lock.where(id: @order.order_items.map(&:menu_item_id)).index_by(&:id)
-        @order.order_items.each do |item|
-          mi = menu_items[item.menu_item_id]
-          raise InsufficientStockError, "Sin stock disponible para #{mi.name}" if mi.stock <= 0
-
-          mi.decrement!(:stock)
-          item.price_cents = mi.price_cents
-        end
+        @order.order_items.each { |item| process_item!(item, menu_items) }
         @order.save!
       end
+    end
+
+    def process_item!(item, menu_items)
+      mi = menu_items[item.menu_item_id]
+      raise InsufficientStockError, 'Artículo de menú no encontrado' unless mi
+      raise InsufficientStockError, "Sin stock disponible para #{mi.dish.name}" if mi.stock <= 0
+
+      mi.decrement!(:stock)
+      item.price_cents = mi.price_cents
     end
 
     def set_daily_menu
