@@ -16,6 +16,7 @@
           <% if authenticated? %>
             <span class="topbar__user"><%= Current.user.name %> (<%= Current.user.role %>)</span>
             <%= link_to "Mis pedidos", orders_path, class: "topbar__link" %>
+            <%= link_to "Invitados", guests_path, class: "topbar__link" %>
             <% if Current.user.admin? %>
               <%= link_to "Platillos", admin_dishes_path, class: "topbar__link" %>
               <%= link_to "Menús", admin_daily_menus_path, class: "topbar__link" %>

@@ -1,0 +1,16 @@
+<% if guest.errors.any? %>
+  <div class="errors">
+    <ul><% guest.errors.full_messages.each do |m| %><li><%= m %></li><% end %></ul>
+  </div>
+<% end %>
+
+<%= form_with model: guest do |f| %>
+  <div class="field">
+    <%= f.label :name, "Nombre" %>
+    <%= f.text_field :name, required: true %>
+  </div>
+  <div class="actions">
+    <%= f.submit %>
+    <%= link_to "Cancelar", guests_path, class: "button secondary" %>
+  </div>
+<% end %>

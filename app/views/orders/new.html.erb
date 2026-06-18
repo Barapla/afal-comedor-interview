@@ -3,6 +3,7 @@
 <h1>Pedido del día — <%= l(@daily_menu.menu_date, format: :long) %></h1>
 
 <%= form_with url: orders_path do |f| %>
+
   <div class="card">
     <h2>Tu comida</h2>
     <p class="muted">Selecciona los platillos que vas a consumir hoy.</p>
@@ -29,11 +30,46 @@
         <% end %>
       </tbody>
     </table>
-    <p class="muted">Marca los platillos que deseas incluir en tu pedido.</p>
   </div>
+
+  <% if @guests.any? %>
+    <% @guests.each do |guest| %>
+      <div class="card">
+        <h2>Platillos de <%= guest.name %></h2>
+        <p class="muted">Sin subsidio — el total se descuenta directo de tu nómina semanal.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Platillo</th>
+              <th>Precio</th>
+              <th>Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @menu_items.each do |menu_item| %>
+              <tr>
+                <td>
+                  <%= check_box_tag "guest_orders[#{guest.id}][]", menu_item.id, false,
+                        id: "guest_#{guest.id}_menu_item_#{menu_item.id}" %>
+                </td>
+                <td>
+                  <%= label_tag "guest_#{guest.id}_menu_item_#{menu_item.id}", menu_item.dish.name %>
+                </td>
+                <td>$<%= "%.2f" % menu_item.dish.price %></td>
+                <td><%= menu_item.stock %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  <% end %>
 
   <div class="actions">
     <%= f.submit "Confirmar pedido" %>
     <%= link_to "Cancelar", orders_path, class: "button secondary" %>
   </div>
+
 <% end %>

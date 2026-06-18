@@ -2,6 +2,7 @@ Rails.application.routes.draw do
   resource :session
 
   resources :orders, only: [ :index, :new, :create, :show ]
+  resources :guests
 
   namespace :admin do
     resources :dishes

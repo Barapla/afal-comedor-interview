@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_18_142326) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -30,6 +30,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "guests", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id"], name: "index_guests_on_user_id"
+  end
+
   create_table "menu_items", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "daily_menu_id", null: false
@@ -39,6 +47,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["daily_menu_id", "dish_id"], name: "index_menu_items_on_daily_menu_id_and_dish_id", unique: true
     t.index ["daily_menu_id"], name: "index_menu_items_on_daily_menu_id"
     t.index ["dish_id"], name: "index_menu_items_on_dish_id"
+  end
+
+  create_table "order_guests", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "guest_id", null: false
+    t.bigint "order_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["guest_id"], name: "index_order_guests_on_guest_id"
+    t.index ["order_id"], name: "index_order_guests_on_order_id", unique: true
   end
 
   create_table "order_items", force: :cascade do |t|
@@ -56,11 +73,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.datetime "created_at", null: false
     t.bigint "daily_menu_id", null: false
     t.string "status", default: "pending", null: false
-    t.integer "subsidy_cents", default: 10000, null: false
+    t.integer "subsidy_cents", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["daily_menu_id"], name: "index_orders_on_daily_menu_id"
-    t.index ["user_id", "daily_menu_id"], name: "index_orders_on_user_id_and_daily_menu_id", unique: true
     t.index ["user_id"], name: "index_orders_on_user_id"
   end
 
@@ -83,8 +99,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "guests", "users"
   add_foreign_key "menu_items", "daily_menus"
   add_foreign_key "menu_items", "dishes"
+  add_foreign_key "order_guests", "guests"
+  add_foreign_key "order_guests", "orders"
   add_foreign_key "order_items", "menu_items"
   add_foreign_key "order_items", "orders"
   add_foreign_key "orders", "daily_menus"

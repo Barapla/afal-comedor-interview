@@ -1,0 +1,30 @@
+<% content_for :title, "Mis invitados" %>
+
+<h1>Mis invitados</h1>
+
+<p><%= link_to "Registrar invitado", new_guest_path, class: "button" %></p>
+
+<% if @guests.any? %>
+  <table>
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @guests.each do |guest| %>
+        <tr>
+          <td><%= guest.name %></td>
+          <td>
+            <%= link_to "Ver", guest %>
+            <%= link_to "Editar", edit_guest_path(guest) %>
+            <%= button_to "Eliminar", guest, method: :delete, data: { turbo_confirm: "¿Eliminar a #{guest.name}?" } %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p class="muted">No tienes invitados registrados.</p>
+<% end %>

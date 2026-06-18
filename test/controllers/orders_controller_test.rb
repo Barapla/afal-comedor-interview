@@ -1,30 +1,30 @@
 # frozen_string_literal: true
 
-require 'test_helper'
+require "test_helper"
 
 class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable Metrics/ClassLength
   setup do
     @user = User.create!(
-      email_address: 'orders-ctrl@test.com',
-      name: 'Test Employee',
-      role: 'employee',
-      password: 'password'
+      email_address: "orders-ctrl@test.com",
+      name: "Test Employee",
+      role: "employee",
+      password: "password"
     )
     sign_in_as(@user)
 
     @menu = DailyMenu.create!(menu_date: Date.current)
     DailyMenu.class_eval { def self.today = DailyMenu.find_by(menu_date: Date.current) }
 
-    @dish = Dish.create!(name: 'Tacos', price_cents: 4_000, active: true)
+    @dish = Dish.create!(name: "Tacos", price_cents: 4_000, active: true)
     @mi   = MenuItem.create!(daily_menu: @menu, dish: @dish, stock: 5)
   end
 
   # CA1: solo los platillos seleccionados aparecen en la orden
-  test 'create genera la orden solo con los platillos seleccionados' do
-    dish_b = Dish.create!(name: 'Enchiladas', price_cents: 3_500, active: true)
+  test "create genera la orden solo con los platillos seleccionados" do
+    dish_b = Dish.create!(name: "Enchiladas", price_cents: 3_500, active: true)
     mi_b = MenuItem.create!(daily_menu: @menu, dish: dish_b, stock: 3)
 
-    assert_difference 'Order.count', 1 do
+    assert_difference "Order.count", 1 do
       post orders_path, params: { menu_item_ids: [@mi.id] }
     end
 
@@ -35,44 +35,44 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
   end
 
   # CA2: platillo con stock=0 seleccionado → falla con mensaje
-  test 'create falla con mensaje cuando se selecciona un platillo sin stock' do
+  test "create falla con mensaje cuando se selecciona un platillo sin stock" do
     @mi.update!(stock: 0)
 
-    assert_no_difference 'Order.count' do
+    assert_no_difference "Order.count" do
       post orders_path, params: { menu_item_ids: [@mi.id] }
     end
 
     assert_redirected_to new_order_path
-    assert_match 'no tienen stock disponible', flash[:error]
+    assert_match "no tienen stock disponible", flash[:error]
     assert_equal 0, @mi.reload.stock
   end
 
   # CA3: selección mixta con un platillo sin stock → todo falla
-  test 'create falla si hay platillos sin stock entre los seleccionados' do
-    dish_b = Dish.create!(name: 'Enchiladas', price_cents: 3_500, active: true)
+  test "create falla si hay platillos sin stock entre los seleccionados" do
+    dish_b = Dish.create!(name: "Enchiladas", price_cents: 3_500, active: true)
     mi_b   = MenuItem.create!(daily_menu: @menu, dish: dish_b, stock: 0)
 
-    assert_no_difference 'Order.count' do
+    assert_no_difference "Order.count" do
       post orders_path, params: { menu_item_ids: [@mi.id, mi_b.id] }
     end
 
     assert_redirected_to new_order_path
-    assert_match 'no tienen stock disponible', flash[:error]
+    assert_match "no tienen stock disponible", flash[:error]
   end
 
-  # CA4: sin platillos seleccionados → falla con mensaje específico
-  test 'create falla cuando no se selecciona ningun platillo' do
-    assert_no_difference 'Order.count' do
+  # CA4: sin ninguna selección → falla con mensaje específico
+  test "create falla cuando no se selecciona ningun platillo" do
+    assert_no_difference "Order.count" do
       post orders_path, params: { menu_item_ids: [] }
     end
 
     assert_redirected_to new_order_path
-    assert_equal 'Debes seleccionar al menos un platillo', flash[:error]
+    assert_match "Debes seleccionar", flash[:error]
   end
 
   # CA5: stock se decrementa para los platillos seleccionados
-  test 'create decrementa stock y crea la orden en una transaccion' do
-    assert_difference 'Order.count', 1 do
+  test "create decrementa stock y crea la orden en una transaccion" do
+    assert_difference "Order.count", 1 do
       post orders_path, params: { menu_item_ids: [@mi.id] }
     end
 
@@ -80,12 +80,12 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
   end
 
   # CA6: atomicidad — sin cambios de stock si la validación falla
-  test 'create no modifica stock si algun platillo seleccionado no tiene stock' do
-    dish_b = Dish.create!(name: 'Enchiladas', price_cents: 3_500, active: true)
+  test "create no modifica stock si algun platillo seleccionado no tiene stock" do
+    dish_b = Dish.create!(name: "Enchiladas", price_cents: 3_500, active: true)
     mi_b   = MenuItem.create!(daily_menu: @menu, dish: dish_b, stock: 0)
     stock_before = @mi.reload.stock
 
-    assert_no_difference 'Order.count' do
+    assert_no_difference "Order.count" do
       post orders_path, params: { menu_item_ids: [@mi.id, mi_b.id] }
     end
 
@@ -94,32 +94,32 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
   end
 
   # CA7: menu_item_ids de otro menú deben ser ignorados
-  test 'create ignora menu_item_ids que no pertenecen al menu de hoy' do
+  test "create ignora menu_item_ids que no pertenecen al menu de hoy" do
     otro_menu = DailyMenu.create!(menu_date: Date.current - 1.day)
     mi_otro = MenuItem.create!(daily_menu: otro_menu, dish: @dish, stock: 5)
-    assert_no_difference('Order.count') { post orders_path, params: { menu_item_ids: [mi_otro.id] } }
+    assert_no_difference("Order.count") { post orders_path, params: { menu_item_ids: [mi_otro.id] } }
     assert_redirected_to new_order_path
-    assert_match 'Ninguno de los platillos', flash[:error]
+    assert_match "Ninguno de los platillos", flash[:error]
   end
 
-  test 'create no decrementa stock si la orden falla por duplicado' do
+  test "create no decrementa stock si la orden falla por duplicado" do
     @menu.orders.create!(
       user: @user,
       order_items_attributes: [{ menu_item_id: @mi.id, price_cents: @dish.price_cents }]
     )
     stock_before = @mi.reload.stock
 
-    assert_no_difference 'Order.count' do
+    assert_no_difference "Order.count" do
       post orders_path, params: { menu_item_ids: [@mi.id] }
     end
 
-    assert_equal stock_before, @mi.reload.stock, 'el stock no debe cambiar si la orden falla'
+    assert_equal stock_before, @mi.reload.stock, "el stock no debe cambiar si la orden falla"
   end
 
-  test 'stock no queda negativo: segunda orden falla cuando el stock se agoto' do
+  test "stock no queda negativo: segunda orden falla cuando el stock se agoto" do
     @mi.update!(stock: 1)
-    user2 = User.create!(email_address: 'second-user@test.com', name: 'Segundo Usuario',
-                         role: 'employee', password: 'password')
+    user2 = User.create!(email_address: "second-user@test.com", name: "Segundo Usuario",
+                         role: "employee", password: "password")
 
     place_locked_order!(@user)
 
@@ -127,8 +127,65 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
       place_locked_order!(user2)
     end
 
-    assert_equal 0, @mi.reload.stock, 'el stock no puede ser negativo'
-    assert_equal 1, Order.count, 'solo una orden debe haberse creado'
+    assert_equal 0, @mi.reload.stock, "el stock no puede ser negativo"
+    assert_equal 1, Order.count, "solo una orden debe haberse creado"
+  end
+
+  # CA8: crear pedido para invitado junto con el propio
+  test "create genera pedido propio y pedido de invitado en una sola transaccion" do
+    guest = @user.guests.create!(name: "Invitado Test")
+    dish_b = Dish.create!(name: "Enchiladas", price_cents: 3_500, active: true)
+    mi_b = MenuItem.create!(daily_menu: @menu, dish: dish_b, stock: 3)
+
+    assert_difference "Order.count", 2 do
+      post orders_path, params: {
+        menu_item_ids: [@mi.id],
+        guest_orders: { guest.id.to_s => [mi_b.id.to_s] }
+      }
+    end
+
+    own_order   = Order.joins("LEFT JOIN order_guests og ON og.order_id = orders.id").where("og.order_id IS NULL AND orders.user_id = ?", @user.id).last
+    guest_order = Order.joins(:order_guest).where(order_guests: { guest_id: guest.id }).last
+
+    assert own_order.present?
+    assert_equal Order::DEFAULT_SUBSIDY_CENTS, own_order.subsidy_cents
+    assert_equal 0, guest_order.subsidy_cents
+    assert_equal 4, @mi.reload.stock
+    assert_equal 2, mi_b.reload.stock
+  end
+
+  # CA9: solo pedido de invitado sin pedido propio
+  test "create permite crear solo pedidos de invitados sin orden propia" do
+    guest = @user.guests.create!(name: "Solo Invitado")
+
+    assert_difference "Order.count", 1 do
+      post orders_path, params: {
+        menu_item_ids: [],
+        guest_orders: { guest.id.to_s => [@mi.id.to_s] }
+      }
+    end
+
+    guest_order = Order.joins(:order_guest).where(order_guests: { guest_id: guest.id }).last
+    assert guest_order.present?
+    assert_equal 0, guest_order.subsidy_cents
+  end
+
+  # CA10: dos invitados distintos pueden pedir el mismo platillo (stock suficiente)
+  test "create crea pedidos para multiples invitados en una transaccion" do
+    guest_a = @user.guests.create!(name: "Invitado A")
+    guest_b = @user.guests.create!(name: "Invitado B")
+    @mi.update!(stock: 3)
+
+    assert_difference "Order.count", 2 do
+      post orders_path, params: {
+        guest_orders: {
+          guest_a.id.to_s => [@mi.id.to_s],
+          guest_b.id.to_s => [@mi.id.to_s]
+        }
+      }
+    end
+
+    assert_equal 1, @mi.reload.stock
   end
 
   private
@@ -139,10 +196,8 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
       raise OrdersController::InsufficientStockError if mi.stock <= 0
 
       mi.decrement!(:stock)
-      @menu.orders.create!(
-        user: user,
-        order_items_attributes: [{ menu_item_id: mi.id, price_cents: mi.price_cents }]
-      )
+      order = @menu.orders.create!(user: user)
+      order.order_items.create!(menu_item: mi, price_cents: mi.price_cents)
     end
   end
 end

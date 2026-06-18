@@ -1,0 +1,48 @@
+<% content_for :title, @guest.name %>
+
+<h1><%= @guest.name %></h1>
+
+<div>
+  <%= link_to "Editar", edit_guest_path(@guest), class: "button" %>
+  <%= button_to "Eliminar", @guest, method: :delete,
+        data: { turbo_confirm: "¿Eliminar a #{@guest.name}? Se eliminarán también sus pedidos." },
+        class: "button danger" %>
+</div>
+
+<p class="muted">
+  Para hacer un pedido del día para este invitado,
+  <%= link_to "crea tu pedido del día", new_order_path %> e incluye sus platillos desde el formulario.
+</p>
+
+<h2>Pedidos</h2>
+
+<% guest_orders = @guest.orders.includes(:daily_menu, order_items: { menu_item: :dish }).order(created_at: :desc) %>
+
+<% if guest_orders.any? %>
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Estado</th>
+        <th>Platillos</th>
+        <th class="right">Cargo a nómina semanal</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% guest_orders.each do |order| %>
+        <tr>
+          <td><%= l(order.daily_menu.menu_date, format: :long) %></td>
+          <td><%= order.status %></td>
+          <td><%= order.order_items.map { |i| i.menu_item.dish.name }.to_sentence %></td>
+          <td class="right">$<%= "%.2f" % (order.items_total_cents / 100.0) %> MXN</td>
+          <td><%= link_to "Ver", order_path(order) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p class="muted">Este invitado aún no tiene pedidos.</p>
+<% end %>
+
+<p><%= link_to "Volver a mis invitados", guests_path %></p>

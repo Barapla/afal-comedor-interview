@@ -10,7 +10,10 @@
   <% end %>
 </p>
 
-<% if @orders.any? %>
+<% own_orders   = @orders.reject(&:guest_order?) %>
+<% guest_orders = @orders.select(&:guest_order?) %>
+
+<% if own_orders.any? %>
   <table>
     <thead>
       <tr>
@@ -22,7 +25,7 @@
       </tr>
     </thead>
     <tbody>
-      <% @orders.each do |order| %>
+      <% own_orders.each do |order| %>
         <tr>
           <td><%= l(order.daily_menu.menu_date, format: :long) %></td>
           <td><%= order.status %></td>
@@ -34,5 +37,36 @@
     </tbody>
   </table>
 <% else %>
-  <p class="muted">Aún no tienes pedidos.</p>
+  <p class="muted">Aún no tienes pedidos propios.</p>
+<% end %>
+
+<h2>Pedidos de mis invitados</h2>
+
+<% if guest_orders.any? %>
+  <table>
+    <thead>
+      <tr>
+        <th>Invitado</th>
+        <th>Fecha</th>
+        <th>Estado</th>
+        <th>Platillos</th>
+        <th class="right">Cargo a nómina semanal</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% guest_orders.each do |order| %>
+        <tr>
+          <td><%= order.guest.name %></td>
+          <td><%= l(order.daily_menu.menu_date, format: :long) %></td>
+          <td><%= order.status %></td>
+          <td><%= order.order_items.map { |i| i.menu_item.dish.name }.to_sentence %></td>
+          <td class="right">$<%= "%.2f" % (order.items_total_cents / 100.0) %> MXN</td>
+          <td><%= link_to "Ver", order %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p class="muted">Ninguno de tus invitados tiene pedidos.</p>
 <% end %>

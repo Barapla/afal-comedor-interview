@@ -3,6 +3,9 @@
 <h1>Pedido del <%= l(@order.daily_menu.menu_date, format: :long) %></h1>
 
 <div class="card">
+  <% if @order.guest %>
+    <p><strong>Invitado:</strong> <%= @order.guest.name %></p>
+  <% end %>
   <p><strong>Estado:</strong> <%= @order.status %></p>
 
   <table>
@@ -22,14 +25,22 @@
         <th>Subtotal</th>
         <th class="right">$<%= "%.2f" % (@order.items_total_cents / 100.0) %></th>
       </tr>
-      <tr>
-        <th>Subsidio aplicado</th>
-        <th class="right">-$<%= "%.2f" % (@order.subsidy_applied_cents / 100.0) %></th>
-      </tr>
-      <tr>
-        <th>Total a descontar de nómina</th>
-        <th class="right">$<%= "%.2f" % (@order.amount_due_cents / 100.0) %> MXN</th>
-      </tr>
+      <% if @order.guest_order? %>
+        <tr>
+          <td colspan="2">
+            <em>Este pedido se cargará directamente a tu nómina semanal sin subsidio.</em>
+          </td>
+        </tr>
+      <% else %>
+        <tr>
+          <th>Subsidio aplicado</th>
+          <th class="right">-$<%= "%.2f" % (@order.subsidy_applied_cents / 100.0) %></th>
+        </tr>
+        <tr>
+          <th>Total a descontar de nómina</th>
+          <th class="right">$<%= "%.2f" % (@order.amount_due_cents / 100.0) %> MXN</th>
+        </tr>
+      <% end %>
     </tfoot>
   </table>
 </div>

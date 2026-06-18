@@ -40,20 +40,6 @@ class OrderBusinessTest < ActiveSupport::TestCase
     assert_equal 4_000, order.amount_due_cents
   end
 
-  test "one order per user per daily menu" do
-    @menu.orders.create!(
-      user: @user,
-      order_items_attributes: [ { menu_item_id: @item_a.id, price_cents: @dish_a.price_cents } ]
-    )
-    duplicate = @menu.orders.new(
-      user: @user,
-      order_items_attributes: [ { menu_item_id: @item_b.id, price_cents: @dish_b.price_cents } ]
-    )
-
-    assert_not duplicate.valid?
-    assert_includes duplicate.errors[:user_id], "ya está en uso"
-  end
-
   test "subsidy_cents no puede ser negativo" do
     order = @menu.orders.new(user: @user, subsidy_cents: -1)
     order.status = "pending"
@@ -81,5 +67,51 @@ class OrderBusinessTest < ActiveSupport::TestCase
     total2 = order.items_total_cents
     assert_equal total1, total2
     assert_equal order.instance_variable_get(:@items_total_cents), 6_000
+  end
+
+  test "guest_order? es false para pedido propio" do
+    order = @menu.orders.create!(
+      user: @user,
+      order_items_attributes: [ { menu_item_id: @item_a.id, price_cents: @dish_a.price_cents } ]
+    )
+    order_loaded = Order.includes(:order_guest).find(order.id)
+    assert_not order_loaded.guest_order?
+  end
+
+  test "guest_order? es true cuando hay order_guest asociado" do
+    guest = @user.guests.create!(name: "Invitado Test")
+    order = @menu.orders.create!(user: @user, subsidy_cents: 0)
+    OrderGuest.create!(order: order, guest: guest)
+
+    order_loaded = Order.includes(:order_guest).find(order.id)
+    assert order_loaded.guest_order?
+  end
+
+  test "order_guest garantiza que el mismo invitado no tenga dos pedidos en el mismo menú" do
+    guest = @user.guests.create!(name: "Invitado Test")
+    order_a = @menu.orders.create!(user: @user, subsidy_cents: 0)
+    OrderGuest.create!(order: order_a, guest: guest)
+
+    order_b = @menu.orders.create!(user: @user, subsidy_cents: 0)
+    duplicate = OrderGuest.new(order: order_b, guest: guest)
+
+    assert_not duplicate.valid?
+    assert_includes duplicate.errors[:guest_id], "ya está en uso"
+  end
+
+  test "empleado puede tener pedido propio y pedido de invitado en el mismo menú" do
+    guest = @user.guests.create!(name: "Invitado Test")
+
+    own_order = @menu.orders.create!(
+      user: @user,
+      order_items_attributes: [ { menu_item_id: @item_a.id, price_cents: @dish_a.price_cents } ]
+    )
+    guest_order = @menu.orders.create!(user: @user, subsidy_cents: 0)
+    OrderGuest.create!(order: guest_order, guest: guest)
+
+    assert own_order.persisted?
+    assert guest_order.persisted?
+    assert_equal Order::DEFAULT_SUBSIDY_CENTS, own_order.subsidy_cents
+    assert_equal 0, guest_order.subsidy_cents
   end
 end
