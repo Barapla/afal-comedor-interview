@@ -21,4 +21,28 @@ class UserTest < ActiveSupport::TestCase
     assert chef.chef?
     assert emp.employee?
   end
+
+  test "requiere email_address presente" do
+    user = User.new(name: "Test", role: "employee", password: "password", email_address: "")
+    assert_not user.valid?
+    assert user.errors[:email_address].any?, "debe tener errores de email"
+  end
+
+  test "rechaza email con formato inválido" do
+    user = User.new(name: "Test", role: "employee", password: "password", email_address: "no-es-un-email")
+    assert_not user.valid?
+    assert user.errors[:email_address].any?
+  end
+
+  test "acepta email con formato válido" do
+    user = User.new(name: "Test", role: "employee", password: "password", email_address: "valido@ejemplo.com")
+    assert user.valid?
+  end
+
+  test "rechaza email duplicado a nivel de modelo" do
+    User.create!(name: "Primero", role: "employee", password: "password", email_address: "dup-user@ejemplo.com")
+    user2 = User.new(name: "Segundo", role: "employee", password: "password", email_address: "dup-user@ejemplo.com")
+    assert_not user2.valid?
+    assert user2.errors[:email_address].any?
+  end
 end
