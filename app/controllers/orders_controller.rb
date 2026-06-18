@@ -35,23 +35,38 @@ class OrdersController < ApplicationController
   private
 
   def build_and_save_order!(menu_item_ids)
+    raise ActiveRecord::RecordNotUnique if duplicate_order?
+
     ActiveRecord::Base.transaction do
-      menu_items = MenuItem.includes(:dish).lock.where(id: menu_item_ids)
+      menu_items = MenuItem.where(id: menu_item_ids).lock.includes(:dish).to_a
+      raise InsufficientStockError, 'Ninguno de los platillos seleccionados está disponible' if menu_items.empty?
+
       validate_stock!(menu_items)
-      @order = @daily_menu.orders.create!(user: Current.user)
-      menu_items.each do |menu_item|
-        @order.order_items.create!(menu_item: menu_item, price_cents: menu_item.price_cents)
-        menu_item.decrement!(:stock)
-      end
+      create_order_with_items!(menu_items)
+    end
+  end
+
+  def create_order_with_items!(menu_items)
+    @order = @daily_menu.orders.create!(user: Current.user)
+    menu_items.each do |menu_item|
+      @order.order_items.create!(menu_item: menu_item, price_cents: menu_item.price_cents)
+      menu_item.decrement!(:stock)
     end
   end
 
   def validate_stock!(menu_items)
+    without_dish = menu_items.select { |mi| mi.dish.nil? }
+    raise InsufficientStockError, 'Algunos platillos ya no están disponibles' if without_dish.any?
+
     out_of_stock = menu_items.select { |mi| mi.stock <= 0 }
     return unless out_of_stock.any?
 
-    names = out_of_stock.map { |mi| mi.dish&.name || 'Platillo eliminado' }.join(', ')
+    names = out_of_stock.map { |mi| mi.dish.name }.join(', ')
     raise InsufficientStockError, "Los siguientes platillos no tienen stock disponible: #{names}"
+  end
+
+  def duplicate_order?
+    @daily_menu.orders.exists?(user: Current.user)
   end
 
   def error_redirect(message)
