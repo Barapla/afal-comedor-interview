@@ -29,6 +29,11 @@ class Admin::DishesController < Admin::BaseController
   end
 
   def destroy
+    # BUG: @dish.destroy retorna false cuando falla (ej: restrict_with_error de menu_items),
+    # pero el controlador no verifica el resultado. Si el destroy falla, se redirige con
+    # el notice de éxito "Platillo eliminado." aunque el registro siga en la BD.
+    # POSIBLE FIX: Verificar @dish.destroyed? o rescatar ActiveRecord::DeleteRestrictionError,
+    # similar a cómo lo hace Admin::DailyMenusController#destroy.
     @dish.destroy
     redirect_to admin_dishes_path, notice: "Platillo eliminado."
   end
