@@ -1,5 +1,8 @@
+# frozen_string_literal: true
+
+# Gestiona la creación, listado y visualización de pedidos de empleados.
 class OrdersController < ApplicationController
-  before_action :set_daily_menu, only: [ :new, :create ]
+  before_action :set_daily_menu, only: %i[new create]
 
   InsufficientStockError = Class.new(StandardError)
 
@@ -16,14 +19,12 @@ class OrdersController < ApplicationController
     @order = @daily_menu.orders.new(order_params)
     @order.user = Current.user
     process_order!
-    redirect_to @order, notice: "Pedido confirmado"
+    redirect_to @order, notice: 'Pedido confirmado'
   rescue InsufficientStockError => e
     @order.errors.add(:base, e.message)
     render :new, status: :unprocessable_entity
-  rescue ActiveRecord::RecordInvalid
-    render :new, status: :unprocessable_entity
-  rescue ActiveRecord::RecordNotUnique
-    @order.errors.add(:base, "Ya tienes un pedido para el menú de hoy")
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+    @order.errors.add(:base, 'Ya tienes un pedido para el menú de hoy') if e.is_a?(ActiveRecord::RecordNotUnique)
     render :new, status: :unprocessable_entity
   end
 
@@ -32,29 +33,34 @@ class OrdersController < ApplicationController
   end
 
   private
-    def process_order!
-      ActiveRecord::Base.transaction do
-        menu_items = MenuItem.lock.where(id: @order.order_items.map(&:menu_item_id)).index_by(&:id)
-        @order.order_items.each { |item| process_item!(item, menu_items) }
-        @order.save!
-      end
+
+  def process_order!
+    ActiveRecord::Base.transaction do
+      menu_items = MenuItem.includes(:dish).lock.where(id: @order.order_items.map(&:menu_item_id)).index_by(&:id)
+      @order.order_items.each { |item| process_item!(item, menu_items) }
+      @order.save!
+    end
+  end
+
+  def process_item!(item, menu_items)
+    mi = menu_items[item.menu_item_id]
+    raise InsufficientStockError, 'Artículo de menú no encontrado' unless mi
+
+    if mi.stock <= 0
+      raise InsufficientStockError,
+            "Sin stock disponible para #{mi.dish&.name || 'platillo eliminado'}"
     end
 
-    def process_item!(item, menu_items)
-      mi = menu_items[item.menu_item_id]
-      raise InsufficientStockError, 'Artículo de menú no encontrado' unless mi
-      raise InsufficientStockError, "Sin stock disponible para #{mi.dish.name}" if mi.stock <= 0
+    mi.decrement!(:stock)
+    item.price_cents = mi.price_cents
+  end
 
-      mi.decrement!(:stock)
-      item.price_cents = mi.price_cents
-    end
+  def set_daily_menu
+    @daily_menu = DailyMenu.today
+    redirect_to root_path, alert: 'No hay menú disponible hoy.' if @daily_menu.nil?
+  end
 
-    def set_daily_menu
-      @daily_menu = DailyMenu.today
-      redirect_to root_path, alert: "No hay menú disponible hoy." if @daily_menu.nil?
-    end
-
-    def order_params
-      params.expect(order: [ order_items_attributes: [ [ :menu_item_id, :_destroy ] ] ])
-    end
+  def order_params
+    params.expect(order: [{ order_items_attributes: [%i[menu_item_id _destroy]] }])
+  end
 end
