@@ -17,16 +17,16 @@ class OrdersController < ApplicationController
   end
 
   def create
-    @order = @daily_menu.orders.new(order_params)
-    @order.user = Current.user
+    build_order
+    return render_order_error('Ya tienes un pedido para el menú de hoy') if duplicate_order?
+
     process_order!
     redirect_to @order, notice: 'Pedido confirmado'
   rescue InsufficientStockError, DataIntegrityError, ActiveRecord::RecordInvalid => e
-    @order.errors.add(:base, e.message)
-    render :new, status: :unprocessable_entity
+    render_order_error(e.message)
   rescue ActiveRecord::RecordNotUnique
-    @order.errors.add(:base, 'Ya tienes un pedido para el menú de hoy')
-    render :new, status: :unprocessable_entity
+    build_order
+    render_order_error('Ya tienes un pedido para el menú de hoy')
   end
 
   def show
@@ -45,13 +45,32 @@ class OrdersController < ApplicationController
 
   def process_item!(item, menu_items)
     mi = menu_items[item.menu_item_id]
-    raise DataIntegrityError, 'Artículo de menú no encontrado' unless mi
+    raise DataIntegrityError, log_missing_menu_item(item) unless mi
     raise DataIntegrityError, 'El platillo fue eliminado y no está disponible' unless mi.dish
 
     raise InsufficientStockError, "Sin stock disponible para #{mi.dish.name}" if mi.stock <= 0
 
     mi.decrement!(:stock)
     item.price_cents = mi.price_cents
+  end
+
+  def build_order
+    @order = @daily_menu.orders.new(order_params)
+    @order.user = Current.user
+  end
+
+  def duplicate_order?
+    Current.user.orders.exists?(daily_menu: @daily_menu)
+  end
+
+  def render_order_error(message)
+    @order.errors.add(:base, message)
+    render :new, status: :unprocessable_entity
+  end
+
+  def log_missing_menu_item(item)
+    Rails.logger.warn "DataIntegrity: menu_item_id=#{item.menu_item_id} no existe en BD para user=#{Current.user.id}"
+    'Artículo de menú no encontrado'
   end
 
   def set_daily_menu
