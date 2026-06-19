@@ -3,10 +3,6 @@
 # Crea la tabla de invitados externos asociados a pedidos de empleados.
 class CreateGuests < ActiveRecord::Migration[8.1]
   def up
-    # Limpieza de intento anterior con diseño diferente
-    drop_table :order_guests, if_exists: true
-    drop_table :guests, if_exists: true
-
     create_table :guests do |t|
       t.references :order, null: false, foreign_key: true
       t.string :name, null: false

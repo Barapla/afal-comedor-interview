@@ -5,6 +5,7 @@
 <div class="card">
   <p><strong>Estado:</strong> <%= @order.status %></p>
 
+  <h3>Tu pedido</h3>
   <table>
     <thead>
       <tr><th>Platillo</th><th class="right">Precio</th></tr>
@@ -32,7 +33,7 @@
       </tr>
       <% if @order.guests.any? %>
         <tr>
-          <th>Costo invitados (<%= @order.guests.size %>)</th>
+          <th>Costo invitados</th>
           <th class="right">$<%= "%.2f" % (@order.guests_total_cents / 100.0) %></th>
         </tr>
       <% end %>
@@ -45,16 +46,35 @@
 
   <% if @order.guests.any? %>
     <h3 style="margin-top:1.5rem">Invitados</h3>
-    <ul>
-      <% @order.guests.each do |guest| %>
-        <li>
-          <%= guest.name %>
-          <% if guest.note.present? %>
-            — <span class="muted"><%= guest.note %></span>
-          <% end %>
-        </li>
-      <% end %>
-    </ul>
+    <% @order.guests.each do |guest| %>
+      <div style="margin-top:1rem; padding:0.75rem; border:1px solid #eee; border-radius:4px;">
+        <strong><%= guest.name %></strong>
+        <% if guest.note.present? %>
+          — <span class="muted"><%= guest.note %></span>
+        <% end %>
+        <% if guest.guest_order_items.any? %>
+          <table style="margin-top:0.5rem">
+            <thead>
+              <tr><th>Platillo</th><th class="right">Precio</th></tr>
+            </thead>
+            <tbody>
+              <% guest.guest_order_items.each do |goi| %>
+                <tr>
+                  <td><%= goi.menu_item.dish.name %></td>
+                  <td class="right">$<%= "%.2f" % (goi.price_cents / 100.0) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Subtotal invitado</th>
+                <th class="right">$<%= "%.2f" % (guest.guest_order_items.sum(&:price_cents) / 100.0) %></th>
+              </tr>
+            </tfoot>
+          </table>
+        <% end %>
+      </div>
+    <% end %>
   <% end %>
 </div>
 

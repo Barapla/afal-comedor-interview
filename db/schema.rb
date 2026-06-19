@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_18_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -28,6 +28,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_220000) do
     t.string "name", null: false
     t.integer "price_cents", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "guest_order_items", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "guest_id", null: false
+    t.bigint "menu_item_id", null: false
+    t.integer "price_cents", null: false
+    t.datetime "updated_at", null: false
+    t.index ["guest_id", "menu_item_id"], name: "index_guest_order_items_on_guest_id_and_menu_item_id", unique: true
+    t.index ["guest_id"], name: "index_guest_order_items_on_guest_id"
+    t.index ["menu_item_id"], name: "index_guest_order_items_on_menu_item_id"
   end
 
   create_table "guests", force: :cascade do |t|
@@ -93,6 +104,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_220000) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "guest_order_items", "guests"
+  add_foreign_key "guest_order_items", "menu_items"
   add_foreign_key "guests", "orders"
   add_foreign_key "menu_items", "daily_menus"
   add_foreign_key "menu_items", "dishes"

@@ -15,7 +15,7 @@ class OrderGuestsTest < ActiveSupport::TestCase
     @item = MenuItem.create!(daily_menu: @menu, dish: @dish, stock: 10)
   end
 
-  # CA5: sin invitados el flujo funciona igual al actual
+  # CA5: sin invitados total_payroll_deduction_cents es igual a amount_due_cents
   test 'sin invitados total_payroll_deduction_cents es igual a amount_due_cents' do
     order = @menu.orders.create!(
       user: @user,
@@ -35,7 +35,8 @@ class OrderGuestsTest < ActiveSupport::TestCase
       subsidy_cents: 5_000,
       order_items_attributes: [{ menu_item_id: @item.id, price_cents: @dish.price_cents }]
     )
-    order.guests.create!(name: 'Invitado 1')
+    guest = order.guests.create!(name: 'Invitado 1')
+    guest.guest_order_items.create!(menu_item: @item, price_cents: @dish.price_cents)
 
     # Empleado: 8000 - 5000 = 3000
     # Invitado: 1 * 8000 = 8000
@@ -46,20 +47,40 @@ class OrderGuestsTest < ActiveSupport::TestCase
     assert_equal 11_000, order.total_payroll_deduction_cents
   end
 
-  test 'múltiples invitados multiplican el costo sin subsidio' do
+  test 'múltiples invitados acumulan su costo individual sin subsidio' do
     order = @menu.orders.create!(
       user: @user,
       subsidy_cents: 5_000,
       order_items_attributes: [{ menu_item_id: @item.id, price_cents: @dish.price_cents }]
     )
-    order.guests.create!(name: 'Invitado 1')
-    order.guests.create!(name: 'Invitado 2')
+    g1 = order.guests.create!(name: 'Invitado 1')
+    g1.guest_order_items.create!(menu_item: @item, price_cents: @dish.price_cents)
+    g2 = order.guests.create!(name: 'Invitado 2')
+    g2.guest_order_items.create!(menu_item: @item, price_cents: @dish.price_cents)
 
     # Empleado: 8000 - 5000 = 3000
     # 2 invitados: 2 * 8000 = 16000
     # Total: 19000
     assert_equal 16_000, order.guests_total_cents
     assert_equal 19_000, order.total_payroll_deduction_cents
+  end
+
+  test 'invitados con platillos distintos acumulan sus costos individuales' do
+    dish_b = Dish.create!(name: 'Platillo B', price_cents: 6_000, active: true)
+    item_b = MenuItem.create!(daily_menu: @menu, dish: dish_b, stock: 5)
+
+    order = @menu.orders.create!(
+      user: @user,
+      subsidy_cents: 5_000,
+      order_items_attributes: [{ menu_item_id: @item.id, price_cents: @dish.price_cents }]
+    )
+    g1 = order.guests.create!(name: 'Invitado 1')
+    g1.guest_order_items.create!(menu_item: @item, price_cents: @dish.price_cents)
+    g2 = order.guests.create!(name: 'Invitado 2')
+    g2.guest_order_items.create!(menu_item: item_b, price_cents: dish_b.price_cents)
+
+    # Invitado 1: 8000, Invitado 2: 6000 → 14000
+    assert_equal 14_000, order.guests_total_cents
   end
 
   # CA1: sistema crea pedido con registros de invitados asociados

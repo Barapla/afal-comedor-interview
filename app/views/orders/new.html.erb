@@ -34,25 +34,11 @@
 
   <div class="card">
     <h2>Invitados (opcional)</h2>
-    <p class="muted">Agrega los comensales externos que te acompañarán. Los platillos seleccionados arriba se aplican a todos. El subsidio solo aplica a tu consumo.</p>
+    <p class="muted">Agrega los comensales externos que te acompañarán. Cada invitado selecciona sus propios platillos. El subsidio solo aplica a tu consumo.</p>
 
     <div id="guests-container"></div>
 
     <button type="button" id="add-guest-btn" class="button secondary">+ Agregar invitado</button>
-
-    <template id="guest-template">
-      <div class="guest-entry" style="margin-top:1rem; padding:1rem; border:1px solid #ddd; border-radius:4px;">
-        <div>
-          <label>Nombre del invitado <span style="color:red">*</span></label>
-          <input type="text" name="guests[][name]" placeholder="Nombre completo" style="width:100%" />
-        </div>
-        <div style="margin-top:0.5rem">
-          <label>Nota (opcional)</label>
-          <textarea name="guests[][note]" placeholder="Ej: alérgico a nueces" rows="2" style="width:100%"></textarea>
-        </div>
-        <button type="button" class="remove-guest button secondary" style="margin-top:0.5rem">Quitar invitado</button>
-      </div>
-    </template>
   </div>
 
   <div class="actions">
@@ -63,16 +49,45 @@
 
 <script>
   (function () {
+    var menuItems = <%= @menu_items.map { |mi| { id: mi.id, name: mi.dish.name, price_cents: mi.price_cents } }.to_json.html_safe %>;
+    var guestIndex = 0;
     var btn = document.getElementById('add-guest-btn');
     var container = document.getElementById('guests-container');
-    var template = document.getElementById('guest-template');
 
     btn.addEventListener('click', function () {
-      var entry = template.content.cloneNode(true);
-      var removeBtn = entry.querySelector('.remove-guest');
-      removeBtn.addEventListener('click', function () {
+      var idx = guestIndex++;
+      var entry = document.createElement('div');
+      entry.className = 'guest-entry';
+      entry.style.cssText = 'margin-top:1rem; padding:1rem; border:1px solid #ddd; border-radius:4px;';
+
+      var dishRows = menuItems.map(function (item) {
+        return '<tr>' +
+          '<td><input type="checkbox" name="guests[' + idx + '][menu_item_ids][]" value="' + item.id + '"></td>' +
+          '<td>' + item.name + '</td>' +
+          '<td>$' + (item.price_cents / 100).toFixed(2) + '</td>' +
+          '</tr>';
+      }).join('');
+
+      entry.innerHTML =
+        '<div>' +
+          '<label>Nombre del invitado <span style="color:red">*</span></label>' +
+          '<input type="text" name="guests[' + idx + '][name]" placeholder="Nombre completo" style="width:100%" />' +
+        '</div>' +
+        '<div style="margin-top:0.5rem">' +
+          '<label>Nota (opcional)</label>' +
+          '<textarea name="guests[' + idx + '][note]" placeholder="Ej: alérgico a nueces" rows="2" style="width:100%"></textarea>' +
+        '</div>' +
+        '<div style="margin-top:0.5rem">' +
+          '<label>Platillos para este invitado <span style="color:red">*</span></label>' +
+          '<table><thead><tr><th></th><th>Platillo</th><th>Precio</th></tr></thead>' +
+          '<tbody>' + dishRows + '</tbody></table>' +
+        '</div>' +
+        '<button type="button" class="remove-guest button secondary" style="margin-top:0.5rem">Quitar invitado</button>';
+
+      entry.querySelector('.remove-guest').addEventListener('click', function () {
         this.closest('.guest-entry').remove();
       });
+
       container.appendChild(entry);
     });
   })();

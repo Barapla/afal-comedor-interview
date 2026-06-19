@@ -32,8 +32,7 @@ class Order < ApplicationRecord
   end
 
   def guests_total_cents
-    guest_count = guests.loaded? ? guests.size : guests.count
-    guest_count * items_total_cents
+    @guests_total_cents ||= GuestOrderItem.joins(:guest).where(guests: { order_id: id }).sum(:price_cents)
   end
 
   def total_payroll_deduction_cents

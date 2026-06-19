@@ -99,7 +99,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
     mi_otro = MenuItem.create!(daily_menu: otro_menu, dish: @dish, stock: 5)
     assert_no_difference('Order.count') { post orders_path, params: { menu_item_ids: [mi_otro.id] } }
     assert_redirected_to new_order_path
-    assert_match 'Ninguno de los platillos', flash[:error]
+    assert_match 'no pertenecen al menú de hoy', flash[:error]
   end
 
   test 'create no decrementa stock si la orden falla por duplicado' do
@@ -131,13 +131,16 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
     assert_equal 1, Order.count, 'solo una orden debe haberse creado'
   end
 
-  # CA1: pedido con 2 invitados válidos crea 2 registros Guest asociados
+  # CA1-invitados: pedido con 2 invitados válidos crea 2 registros Guest asociados
   test 'create con invitados válidos crea pedido con registros de invitados' do
     assert_difference 'Order.count', 1 do
       assert_difference 'Guest.count', 2 do
         post orders_path, params: {
           menu_item_ids: [@mi.id],
-          guests: [{ name: 'Visitante Uno', note: '' }, { name: 'Visitante Dos', note: 'VIP' }]
+          guests: [
+            { name: 'Visitante Uno', note: '', menu_item_ids: [@mi.id] },
+            { name: 'Visitante Dos', note: 'VIP', menu_item_ids: [@mi.id] }
+          ]
         }
       end
     end
@@ -146,14 +149,38 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
     assert_equal 2, order.guests.count
   end
 
-  # CA3: stock 3, empleado + 3 invitados = 4 → rechazado
+  # CA2-invitados: cada invitado tiene sus propios platillos registrados
+  test 'create con invitados registra los platillos por invitado' do
+    dish_b = Dish.create!(name: 'Enchiladas', price_cents: 3_500, active: true)
+    mi_b   = MenuItem.create!(daily_menu: @menu, dish: dish_b, stock: 5)
+
+    assert_difference 'GuestOrderItem.count', 2 do
+      post orders_path, params: {
+        menu_item_ids: [@mi.id],
+        guests: [
+          { name: 'Inv A', menu_item_ids: [@mi.id] },
+          { name: 'Inv B', menu_item_ids: [mi_b.id] }
+        ]
+      }
+    end
+
+    order = Order.last
+    assert_equal [@mi.id], order.guests.find_by(name: 'Inv A').menu_items.pluck(:id)
+    assert_equal [mi_b.id], order.guests.find_by(name: 'Inv B').menu_items.pluck(:id)
+  end
+
+  # CA3-invitados: stock 3, empleado + 3 invitados seleccionan el mismo platillo → rechazado
   test 'create falla si stock es insuficiente para empleado mas invitados' do
     @mi.update!(stock: 3)
 
     assert_no_difference 'Order.count' do
       post orders_path, params: {
         menu_item_ids: [@mi.id],
-        guests: [{ name: 'Inv 1' }, { name: 'Inv 2' }, { name: 'Inv 3' }]
+        guests: [
+          { name: 'Inv 1', menu_item_ids: [@mi.id] },
+          { name: 'Inv 2', menu_item_ids: [@mi.id] },
+          { name: 'Inv 3', menu_item_ids: [@mi.id] }
+        ]
       }
     end
 
@@ -162,21 +189,38 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
     assert_equal 3, @mi.reload.stock
   end
 
-  # CA4: stock 5, empleado + 2 invitados = 3 → stock queda en 2
-  test 'create descuenta stock para empleado mas invitados' do
+  # CA4-invitados: stock 5, empleado + 2 invitados seleccionan el mismo platillo → stock baja 3
+  test 'create descuenta stock por persona que selecciona cada platillo' do
     @mi.update!(stock: 5)
 
     assert_difference 'Order.count', 1 do
       post orders_path, params: {
         menu_item_ids: [@mi.id],
-        guests: [{ name: 'Inv 1' }, { name: 'Inv 2' }]
+        guests: [
+          { name: 'Inv 1', menu_item_ids: [@mi.id] },
+          { name: 'Inv 2', menu_item_ids: [@mi.id] }
+        ]
       }
     end
 
     assert_equal 2, @mi.reload.stock
   end
 
-  # CA5: sin invitados el flujo es idéntico al anterior
+  # CA4b-invitados: invitado elige platillo distinto → solo ese stock baja
+  test 'create descuenta stock independiente por platillo de cada persona' do
+    dish_b = Dish.create!(name: 'Enchiladas', price_cents: 3_500, active: true)
+    mi_b   = MenuItem.create!(daily_menu: @menu, dish: dish_b, stock: 5)
+
+    post orders_path, params: {
+      menu_item_ids: [@mi.id],
+      guests: [{ name: 'Inv 1', menu_item_ids: [mi_b.id] }]
+    }
+
+    assert_equal 4, @mi.reload.stock
+    assert_equal 4, mi_b.reload.stock
+  end
+
+  # CA5-invitados: sin invitados el flujo es idéntico al anterior
   test 'create sin invitados funciona igual que antes (compatibilidad)' do
     assert_difference 'Order.count', 1 do
       post orders_path, params: { menu_item_ids: [@mi.id] }
@@ -187,12 +231,12 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
     assert_equal 4, @mi.reload.stock
   end
 
-  # CA7: invitado sin nombre → falla con mensaje específico
+  # CA6-invitados: invitado sin nombre → falla con mensaje específico
   test 'create con invitado sin nombre falla validación' do
     assert_no_difference 'Order.count' do
       post orders_path, params: {
         menu_item_ids: [@mi.id],
-        guests: [{ name: '', note: 'tiene nota pero no nombre' }]
+        guests: [{ name: '', note: 'tiene nota pero no nombre', menu_item_ids: [@mi.id] }]
       }
     end
 
@@ -200,18 +244,45 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest # rubocop:disable M
     assert_equal 'El nombre del invitado es requerido', flash[:error]
   end
 
-  # CA8: detalle del pedido muestra invitados
-  test 'show muestra los invitados del pedido' do
+  # CA7-invitados: invitado sin platillos → falla con mensaje específico
+  test 'create con invitado sin platillos falla validación' do
+    assert_no_difference 'Order.count' do
+      post orders_path, params: {
+        menu_item_ids: [@mi.id],
+        guests: [{ name: 'Invitado Sin Platillo', note: '' }]
+      }
+    end
+
+    assert_redirected_to new_order_path
+    assert_equal 'Debes seleccionar al menos un platillo para el invitado', flash[:error]
+  end
+
+  # CA8-invitados: entrada completamente vacía de invitado es ignorada
+  test 'create ignora entradas de invitado completamente vacias' do
+    assert_difference 'Order.count', 1 do
+      assert_no_difference 'Guest.count' do
+        post orders_path, params: {
+          menu_item_ids: [@mi.id],
+          guests: [{ name: '', note: '', menu_item_ids: [] }]
+        }
+      end
+    end
+  end
+
+  # CA9-invitados: detalle del pedido muestra invitados con sus platillos
+  test 'show muestra los invitados del pedido con sus platillos' do
     order = @menu.orders.create!(
       user: @user,
       order_items_attributes: [{ menu_item_id: @mi.id, price_cents: @dish.price_cents }]
     )
-    order.guests.create!(name: 'Rodrigo Lopez')
+    guest = order.guests.create!(name: 'Rodrigo Lopez')
+    guest.guest_order_items.create!(menu_item: @mi, price_cents: @dish.price_cents)
 
     get order_path(order)
 
     assert_response :success
     assert_match 'Rodrigo Lopez', response.body
+    assert_match 'Tacos', response.body
   end
 
   private
